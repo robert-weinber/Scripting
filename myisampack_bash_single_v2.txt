@@ -1,0 +1,69 @@
+## Login info ##
+MUSER=service
+MPASS=x55GeCcd5bPgtTzW
+MHOST="192.168.90.82"
+MPORT='3308'
+
+#Creating logfile: log_compress__current time
+FILENAME=log_compress_$(date "+%Y-%m-%d_%H-%M-%S").txt
+touch "$FILENAME"
+
+# Getting list of viewbox schemas
+VBS=$(mysql  --host=$MHOST --port=$MPORT --user=$MUSER --password=$MPASS -se "SELECT SCHEMA_NAME FROM information_schema.schemata where SCHEMA_NAME LIKE '%viewbox%'")
+
+ 
+# Getting list of viewtables from viewbox schemas -- viewlist
+viewtables = ()
+i=0
+for VB in $VBS
+do
+
+myvar=$(mysql  --host=$MHOST --port=$MPORT --user=$MUSER --password=$MPASS -se "SELECT CONCAT(b.name,'/',a.name) FROM $VB.tables a
+LEFT JOIN $VB.viewbox_systems b ON a.system_id = b.id  where a.type!=1") # getting non-base tables (new viewbox)
+for tab in $myvar
+do
+viewtables[i]=${tab}
+i=$((i++))
+done
+
+
+myvar=$(mysql  --host=$MHOST --port=$MPORT --user=$MUSER --password=$MPASS -se "SELECT CONCAT(a.database,'/',a.name) FROM $VB.tables a where a.type!=1") # getting non-base tables (old viewbox)
+for tab in $myvar
+do
+viewtables[i]=${tab}
+i=$((i++))
+done
+
+done
+
+
+for nextfile in /data/databases/mysql${MPORT}/*/*.MYI
+do
+# Checking if the current table is in the viewlist
+ISVIEW='0'
+for tab in ${viewtables[@]}
+do
+
+if [ "${nextfile:26}" = "${tab}.MYI" ]; then
+ISVIEW='1'
+fi
+
+done
+if [ "${ISVIEW}" = "0" ]; then
+
+	echo "${nextfile}" >> $FILENAME
+	echo "Size before: " >> $FILENAME
+	stat -c %s ${nextfile%.MYI}.MYD >> $FILENAME
+	echo $(date "+%Y-%m-%d_%H-%M-%S") myisamchk -f ${nextfile%.MYI} >> $FILENAME
+	myisamchk -f ${nextfile%.MYI}
+	echo $(date "+%Y-%m-%d_%H-%M-%S") myisampack ${nextfile%.MYI} >> $FILENAME
+	myisampack ${nextfile%.MYI}
+	echo $(date "+%Y-%m-%d_%H-%M-%S") myisamchk -rq ${nextfile%.MYI} >> $FILENAME
+	myisamchk -rq ${nextfile%.MYI}
+	echo "Size after: " >> $FILENAME
+	stat -c %s ${nextfile%.MYI}.MYD >> $FILENAME
+fi
+
+done
+echo mysqladmin --host=$MHOST --port=$MPORT --user=$MUSER --password=$MPASS flush-tables; >> $FILENAME
+mysqladmin --host=$MHOST --port=$MPORT --user=$MUSER --password=$MPASS flush-tables; >> $FILENAME
