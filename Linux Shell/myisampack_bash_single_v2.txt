@@ -1,6 +1,6 @@
 ## Login info ##
 MUSER=service
-MPASS=x55GeCcd5bPgtTzW
+MPASS=asdasdasd
 MHOST="192.168.90.82"
 MPORT='3308'
 
