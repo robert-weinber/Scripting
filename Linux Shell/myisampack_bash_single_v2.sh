@@ -1,3 +1,5 @@
+#!/bin/bash
+
 ## Login info ##
 MUSER=service
 MPASS=asdasdasd
